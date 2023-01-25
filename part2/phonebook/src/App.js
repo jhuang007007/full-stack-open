@@ -1,53 +1,112 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PersonForm from './components/PersonForm'
 import Persons from './components/Persons'
+import personsServices from './services/persons'
 
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas', number: '040-123456'},
-    { name: 'Ada Lovelace', number: '39-44-5323523'},
-    { name: 'Dan Abramov', number: '12-43-234345'},
-    { name: 'Mary Poppendieck', number: '39-23-6423122'}
-  ]) 
+  const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
+
+  useEffect(() => {
+    console.log('effect')
+    personsServices
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
+      })
+  }, [])
 
   const addName = (event) => {
     event.preventDefault()
     if (checkDuplicateName(newName) === true) {
-      return alert(`${newName} is already added to phonebook`)
+      const person = persons.find(person => person.name === newName)
+      replaceOldNumber(person.id, newNumber)
     }
+    
     const nameObject = {
       name: newName,
       number: newNumber
     }
-    setPersons(persons.concat(nameObject))
-    setNewName('')
-    setNewNumber('')
-  }
+
+    personsServices
+      .create(nameObject)
+      .then(returnedPerson => {
+        setPersons(persons.concat(returnedPerson))
+        setNewName('')
+        setNewNumber('')
+      })
+   }
 
   const handleNameChange = (event) => {
-    console.log(event.target.value)
     setNewName(event.target.value)
   }
 
   const handleNumberChange = (event) => {
-    console.log(event.target.value)
     setNewNumber(event.target.value)
   }
 
   const checkDuplicateName = (name) => {
-    const nameArray = persons.map(person => person.name);
-    return nameArray.includes(name)
+    const nameArray = persons.map(person => person.name)
+    let confirmation = false
+    if (nameArray.includes(name) === true) {
+      confirmation = window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)
+    }
+    console.log(confirmation)
+    return confirmation
+  }
+
+  const replaceOldNumber = (id, newNumber) => {
+    let person = persons.find(p => p.id === id)
+    person.number = newNumber
+    console.log(newNumber)
+
+    personsServices
+      .update(id, person)
+      .then(response => {
+        setPersons(persons.map(p => p.id !== id ? person : response.data))
+      })
+  }
+
+  const deletePerson = (id) => {
+    const person = persons.find(p => p.id === id)
+    const confirmation = window.confirm(`Are you sure you want to delete ${person.name}?`)
+    if (confirmation !== true) return; 
+
+    personsServices
+      .removeObject(id)
+      .then(() => {
+        setPersons(persons.filter(p => p.id !== id))
+      })
+      .catch(error => {
+        alert(
+          `the person ${person.name} was already deleted from server`
+        )
+        setPersons(persons.filter(p => p.id !== id))
+      })
   }
 
   return (
     <div>
       <h2>Phonebook</h2>
-      <PersonForm newName={newName} handleNameChange={handleNameChange} newNumber={newNumber} handleNumberChange={handleNumberChange} addName={addName}/>
+      <PersonForm 
+        newName={newName} 
+        handleNameChange={handleNameChange} 
+        newNumber={newNumber} 
+        handleNumberChange={handleNumberChange} 
+        addName={addName}
+      />
       <h3>Numbers</h3>
-      <Persons persons={persons}/>
-      
+      <ul>
+        {persons.map(person => 
+          <Persons
+          key={person.id}
+          name={person.name}
+          number={person.number}
+          deletePerson={() => deletePerson(person.id)}
+        /> 
+        )}
+      </ul>
       <div>debug: {newName}</div>
     </div>
     
