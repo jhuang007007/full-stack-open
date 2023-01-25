@@ -9,7 +9,6 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
 
   useEffect(() => {
-    console.log('effect')
     personsServices
       .getAll()
       .then(initialPersons => {
@@ -19,10 +18,16 @@ const App = () => {
 
   const addName = (event) => {
     event.preventDefault()
-    if (checkDuplicateName(newName) === true) {
-      const person = persons.find(person => person.name === newName)
-      replaceOldNumber(person.id, newNumber)
-    }
+    const nameArray = persons.map(person => person.name)
+    if (nameArray.includes(newName) === true) {
+      let confirm = window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`);
+      if (confirm === true) {
+        const person = persons.find(person => person.name === newName)
+        return replaceNumber(person.id)
+      } else {
+        return
+      }
+    } 
     
     const nameObject = {
       name: newName,
@@ -38,34 +43,27 @@ const App = () => {
       })
    }
 
+  const replaceNumber = (id) => {
+    const newNumberObject = {
+      name: newName,
+      number: newNumber
+    }
+
+    personsServices
+      .update(id, newNumberObject)
+      .then(response => {
+        setPersons(persons.map(person => person.id !== id ? person : response))
+        setNewName('')
+        setNewNumber('')
+      })
+  }
+
   const handleNameChange = (event) => {
     setNewName(event.target.value)
   }
 
   const handleNumberChange = (event) => {
     setNewNumber(event.target.value)
-  }
-
-  const checkDuplicateName = (name) => {
-    const nameArray = persons.map(person => person.name)
-    let confirmation = false
-    if (nameArray.includes(name) === true) {
-      confirmation = window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)
-    }
-    console.log(confirmation)
-    return confirmation
-  }
-
-  const replaceOldNumber = (id, newNumber) => {
-    let person = persons.find(p => p.id === id)
-    person.number = newNumber
-    console.log(newNumber)
-
-    personsServices
-      .update(id, person)
-      .then(response => {
-        setPersons(persons.map(p => p.id !== id ? person : response.data))
-      })
   }
 
   const deletePerson = (id) => {
@@ -75,13 +73,9 @@ const App = () => {
 
     personsServices
       .removeObject(id)
-      .then(() => {
-        setPersons(persons.filter(p => p.id !== id))
-      })
-      .catch(error => {
-        alert(
-          `the person ${person.name} was already deleted from server`
-        )
+      .then(setPersons(persons.filter(p => p.id !== id)))
+      .catch(() => {
+        alert(`the person ${person.name} was already deleted from server`)
         setPersons(persons.filter(p => p.id !== id))
       })
   }
