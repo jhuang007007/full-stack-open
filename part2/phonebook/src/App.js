@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Notification from './components/Notification'
 import PersonForm from './components/PersonForm'
 import Persons from './components/Persons'
 import personsServices from './services/persons'
@@ -7,6 +8,8 @@ const App = () => {
   const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
+  const [message, setMessage] = useState(null)
+  const [status, setStatus] = useState(null) 
 
   useEffect(() => {
     personsServices
@@ -38,8 +41,14 @@ const App = () => {
       .create(nameObject)
       .then(returnedPerson => {
         setPersons(persons.concat(returnedPerson))
+        setMessage(
+          `Added ${newName}`
+        )
         setNewName('')
         setNewNumber('')
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
       })
    }
 
@@ -53,8 +62,24 @@ const App = () => {
       .update(id, newNumberObject)
       .then(response => {
         setPersons(persons.map(person => person.id !== id ? person : response))
+        setMessage(
+          `Changed ${newName}'s number to ${newNumber}`
+        )
         setNewName('')
         setNewNumber('')
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
+      })
+      .catch(error => {
+        setStatus('error')
+        setMessage(
+          `Information of ${newName} has already been removed from server`
+        )
+        setTimeout(() => {
+          setMessage(null)
+          setStatus(null)
+        }, 5000)
       })
   }
 
@@ -74,14 +99,22 @@ const App = () => {
     personsServices
       .removeObject(id)
       .then(setPersons(persons.filter(p => p.id !== id)))
-      .catch(() => {
-        alert(`the person ${person.name} was already deleted from server`)
-        setPersons(persons.filter(p => p.id !== id))
+      .catch(error => {
+        setStatus('error')
+        setMessage(
+          `Information of ${newName} has already been removed from server`
+        )
+        setTimeout(() => {
+          setMessage(null)
+          setStatus(null)
+        }, 5000)
       })
   }
 
   return (
     <div>
+      <h1>Notes</h1>
+      <Notification message={message} status={status}/>
       <h2>Phonebook</h2>
       <PersonForm 
         newName={newName} 
